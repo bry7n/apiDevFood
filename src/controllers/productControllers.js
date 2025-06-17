@@ -5,133 +5,187 @@ export const getProducts = async (req, res) => {
     const listProducts = await prisma.product.findMany();
     res.status(200).json(listProducts);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Erro ao buscar produtos:", err);
+    res
+      .status(500)
+      .json({ message: "Erro interno do servidor.", error: err.message });
   }
 };
 
-export const getProductByCode = async (req, res) => {
+export const getProductsByName = async (req, res) => {
   try {
-    const { code } = req.params;
-    const listProduct = await prisma.product.findUnique({
-      where: { code: parseInt(code) },
-    });
-    if (!listProduct) {
-      res.status(404).json({ message: "Product not found." });
+    const { name } = req.query;
+
+    if (!name || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "O nome do produto para busca deve ser informado." });
     }
-    res.status(200).json(listProduct);
+
+    const listProductsName = await prisma.product.findMany({
+      where: {
+        name: {
+          contains: name,
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (listProductsName.length === 0) {
+      const allProducts = await prisma.product.findMany();
+      return res.status(200).json(allProducts);
+    }
+
+    res.status(200).json(listProductsName);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Erro ao buscar produtos por nome:", err);
+    res
+      .status(500)
+      .json({ message: "Erro interno do servidor, tente novamente." });
   }
 };
 
 export const createProducts = async (req, res) => {
   const { name, description, price, stock } = req.body;
 
-  if (!name || !description || !price || !stock) {
-    res.status(400).json({ message: "All information must be filled in." });
+  if (!name || !description || price === undefined) {
+    return res
+      .status(400)
+      .json({ message: "Nome, descrição e preço devem ser preenchidos." });
+  }
+  if (isNaN(parseFloat(price))) {
+    return res
+      .status(400)
+      .json({ message: "O preço deve ser um número válido." });
+  }
+  if (stock !== undefined && isNaN(parseInt(stock))) {
+    return res
+      .status(400)
+      .json({
+        message: "O estoque deve ser um número inteiro válido, se fornecido.",
+      });
   }
 
   try {
-    const lastProduct = await prisma.product.findFirst({
-      orderBy: {
-        code: "desc",
-      },
-      select: {
-        code: true,
-      },
-    });
-
-    let newCode;
-    if (lastProduct) {
-      newCode = lastProduct.code + 1;
-    } else {
-      newCode = 1;
-    }
-
     const createProduct = await prisma.product.create({
       data: {
-        code: newCode,
         name,
         description,
-        price,
+        price: parseFloat(price),
         stock: stock !== undefined ? parseInt(stock) : 0,
       },
     });
     res.status(201).json(createProduct);
   } catch (err) {
-    if (err.code === "P2002") {
-      return res
-        .status(409)
-        .json({ message: "Error: code conflict. Try again." });
-    }
+    console.error("Erro ao criar produto:", err);
     res
       .status(500)
-      .json({ message: "Internal server error", error: err.message });
+      .json({
+        message: "Erro interno do servidor ao criar o produto.",
+        error: err.message,
+      });
   }
 };
 
 export const editProduct = async (req, res) => {
   const { id } = req.params;
-  const { code: bodyCode, name, description, price, stock } = req.body;
+  const { name, description, price, stock } = req.body;
 
-  let whereCondition = {};
+  if (!id) {
+    return res
+      .status(400)
+      .json({
+        message: "Por favor, forneça o ID do produto na URL para atualização.",
+      });
+  }
 
-  if (id) {
-    whereCondition = { id: id };
-  } else if (bodyCode) {
-    whereCondition = { code: parseInt(bodyCode) };
-  } else {
-    return res.status(400).json({
-      message: "Please provide an ID or a Code to update the product.",
-    });
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (price !== undefined) {
+    if (isNaN(parseFloat(price))) {
+      return res
+        .status(400)
+        .json({ message: "O preço deve ser um número válido." });
+    }
+    updateData.price = parseFloat(price);
+  }
+  if (stock !== undefined) {
+    if (isNaN(parseInt(stock))) {
+      return res
+        .status(400)
+        .json({ message: "O estoque deve ser um número inteiro válido." });
+    }
+    updateData.stock = parseInt(stock);
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return res
+      .status(400)
+      .json({ message: "Nenhum dado válido para atualização fornecido." });
   }
 
   try {
     const edit = await prisma.product.update({
-      where: { id },
-      data: {
-        code,
-        name,
-        description,
-        price,
-        stock: stock !== undefined ? parseInt(stock) : undefined,
-      },
+      where: { id: id },
+      data: updateData,
     });
     res.status(200).json(edit);
   } catch (err) {
-    if (err === "P2025") {
-      res.status(404).json({ message: "Product not found for update." });
+    console.error("Erro ao editar produto:", err);
+    if (err.code === "P2025") {
+      return res
+        .status(404)
+        .json({ message: "Produto não encontrado para atualização." });
     }
-    res.status(500).json(err);
+    res
+      .status(500)
+      .json({
+        message: "Erro interno do servidor ao editar o produto.",
+        error: err.message,
+      });
   }
 };
 
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;
-  const { code } = req.body;
 
-  let whereCondition = {};
-
-  if (id) {
-    whereCondition = { id: id };
-  } else if (bodyCode) {
-    whereCondition = { code: parseInt(bodyCode) };
-  } else {
-    return res.status(404).json({
-      message: "Please provide an ID or a Code to delete the product.",
-    });
+  if (!id) {
+    return res
+      .status(400)
+      .json({
+        message: "Por favor, forneça o ID do produto na URL para exclusão.",
+      });
   }
 
   try {
-    const deleteProduct = await prisma.product.delete({
-      where: whereCondition,
+    const deletedProduct = await prisma.product.delete({
+      where: { id: id },
     });
 
-    res.status(200).json({ message: "Product deleted successfully." });
+    res
+      .status(200)
+      .json({ message: "Produto deletado com sucesso!", deletedProduct });
   } catch (err) {
-    if (err === "P2025") {
-      res.status(404).json({ message: "Product not found for deletion.s" });
+    console.error("Erro ao deletar produto:", err);
+    if (err.code === "P2025") {
+      return res
+        .status(404)
+        .json({ message: "Produto não encontrado para exclusão." });
     }
-    res.status(500).json(err);
+    if (err.code === "P2003") {
+      return res
+        .status(409)
+        .json({
+          message:
+            "Não é possível excluir este produto pois ele está associado a uma ou mais vendas.",
+        });
+    }
+    res
+      .status(500)
+      .json({
+        message: "Erro interno do servidor ao deletar o produto.",
+        error: err.message,
+      });
   }
 };

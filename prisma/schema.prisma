@@ -20,6 +20,8 @@ model User {
   name  String
   email String  @unique
   address Address
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 type Address {
@@ -32,7 +34,6 @@ type Address {
 
 model Product {
   id      String  @id @default(uuid()) @map ("_id")
-  code    Int    @unique
   name    String
   description   String?
   price   Float
