@@ -4,12 +4,14 @@ import {
     getClients,
     createClients,
     editClient,
-    deleteClient
+    deleteClient,
+    getClientsByName
 } from '../controllers/clientControllers.js'
 
 const router = express.Router();
 
 router.get("/clients", getClients);
+router.get("/clients/search", getClientsByName);
 router.post("/clients", createClients);
 router.put("/clients/:id" , editClient);
 router.delete("/clients/:id", deleteClient);

@@ -5,6 +5,54 @@ export const getClients = async (req, res) => {
   res.status(200).json(clients);
 };
 
+
+
+
+export const getClientsByName = async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    if (!name || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "O nome do cliente para busca deve ser informado." });
+    }
+
+    const listClientsName = await prisma.user.findMany({
+      where: {
+        name: {
+          contains: name,
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (listClientsName.length === 0) {
+      const allClients = await prisma.user.findMany();
+      return res.status(200).json(allClients);
+    }
+
+    res.status(200).json(listClientsName);
+  } catch (err) {
+    console.error("Erro ao buscar clients por nome:", err);
+    res
+      .status(500)
+      .json({ message: "Erro interno do servidor, tente novamente." });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 export const createClients = async (req, res) => {
   const { name, age, email, address } = req.body;
 
