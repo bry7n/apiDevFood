@@ -5,9 +5,6 @@ export const getClients = async (req, res) => {
   res.status(200).json(clients);
 };
 
-
-
-
 export const getClientsByName = async (req, res) => {
   try {
     const { name } = req.query;
@@ -40,18 +37,6 @@ export const getClientsByName = async (req, res) => {
       .json({ message: "Erro interno do servidor, tente novamente." });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
 
 export const createClients = async (req, res) => {
   const { name, age, email, address } = req.body;
@@ -97,8 +82,6 @@ export const deleteClient = async (req, res) => {
     res.status(404).json({ message: `Client not found. \n ${err}` });
   }
 };
-
-
 
 //NA CONTROLLERS VAMOS COLOCAR TODOS OS NOSSOS POST,PUT,GET E DELETE
 //LEMBRANDO SEMPRE DE EXPORTAR PARA USAR NO ROUTES
