@@ -1,10 +1,11 @@
 {
   "name": "intensivodev",
   "version": "1.0.0",
-  "main": "serverjs",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
